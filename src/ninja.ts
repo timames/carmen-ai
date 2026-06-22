@@ -4,7 +4,7 @@
  * Restricted to allowed users only.
  */
 
-const NINJA_BASE = "https://us2.ninjarmm.com";
+const NINJA_BASE = "https://cardinalservicesltd.rmmservices.net";
 const NINJA_SCOPES = "monitoring management control";
 const ALLOWED_EMAILS = ["tames@cardinalservicesltd.com", "rosal.jeffrey@cardinalservicesltd.com"];
 
