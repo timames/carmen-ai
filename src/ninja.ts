@@ -6,7 +6,7 @@
 
 const NINJA_BASE = "https://cardinalservicesltd.rmmservices.net";
 const NINJA_SCOPES = "monitoring management control";
-const ALLOWED_EMAILS = ["tames@cardinalservicesltd.com", "rosal.jeffrey@cardinalservicesltd.com"];
+const ALLOWED_EMAILS = ["rosal.jeffrey@cardinalservicesltd.com", "tames@cardinalservicesltd.com", "malia@cardinalservicesltd.com"];
 
 export function isNinjaAllowed(email: string): boolean {
   return ALLOWED_EMAILS.includes(email.toLowerCase());
