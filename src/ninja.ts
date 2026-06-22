@@ -1,6 +1,6 @@
 /**
  * NinjaOne RMM integration for Carmen AI.
- * OAuth2 authorization code flow + API data fetching.
+ * Uses client_credentials grant (app-level access).
  * Restricted to allowed users only.
  */
 
@@ -12,85 +12,7 @@ export function isNinjaAllowed(email: string): boolean {
   return ALLOWED_EMAILS.includes(email.toLowerCase());
 }
 
-// ── OAuth flow ──────────────────────────────────────
-
-export function getNinjaLoginUrl(clientId: string, redirectUri: string, state: string): string {
-  const params = new URLSearchParams({
-    response_type: "code",
-    client_id: clientId,
-    redirect_uri: redirectUri,
-    scope: NINJA_SCOPES,
-    state,
-  });
-  return `${NINJA_BASE}/ws/oauth/authorize?${params}`;
-}
-
-export async function exchangeNinjaCode(
-  code: string,
-  clientId: string,
-  clientSecret: string,
-  redirectUri: string
-): Promise<NinjaTokens | null> {
-  const res = await fetch(`${NINJA_BASE}/ws/oauth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      client_id: clientId,
-      client_secret: clientSecret,
-      code,
-      redirect_uri: redirectUri,
-    }),
-  });
-
-  if (!res.ok) {
-    console.error("NinjaOne token exchange failed:", await res.text());
-    return null;
-  }
-
-  const data = (await res.json()) as {
-    access_token: string;
-    refresh_token?: string;
-    expires_in: number;
-  };
-
-  return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token || "",
-    expiresAt: Date.now() + data.expires_in * 1000,
-  };
-}
-
-export async function refreshNinjaToken(
-  refreshToken: string,
-  clientId: string,
-  clientSecret: string
-): Promise<NinjaTokens | null> {
-  const res = await fetch(`${NINJA_BASE}/ws/oauth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: refreshToken,
-    }),
-  });
-
-  if (!res.ok) return null;
-
-  const data = (await res.json()) as {
-    access_token: string;
-    refresh_token?: string;
-    expires_in: number;
-  };
-
-  return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token || refreshToken,
-    expiresAt: Date.now() + data.expires_in * 1000,
-  };
-}
+// ── Client credentials token ────────────────────────
 
 interface NinjaTokens {
   accessToken: string;
@@ -98,7 +20,39 @@ interface NinjaTokens {
   expiresAt: number;
 }
 
-// ── Token storage (KV) ─────────────────────────────
+async function fetchClientCredentialsToken(
+  clientId: string,
+  clientSecret: string
+): Promise<NinjaTokens | null> {
+  const res = await fetch(`${NINJA_BASE}/ws/oauth/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: NINJA_SCOPES,
+    }),
+  });
+
+  if (!res.ok) {
+    console.error("NinjaOne client_credentials failed:", await res.text());
+    return null;
+  }
+
+  const data = (await res.json()) as {
+    access_token: string;
+    expires_in: number;
+  };
+
+  return {
+    accessToken: data.access_token,
+    refreshToken: "",
+    expiresAt: Date.now() + data.expires_in * 1000,
+  };
+}
+
+// ── Token storage (KV) with auto-fetch ──────────────
 
 export async function getNinjaToken(
   kv: KVNamespace,
@@ -106,32 +60,29 @@ export async function getNinjaToken(
   clientId: string,
   clientSecret: string
 ): Promise<string | null> {
-  const data = await kv.get(`ninja:${userId}`);
-  if (!data) return null;
-
-  const tokens: NinjaTokens = JSON.parse(data);
-
-  // Still valid (5 min buffer)
-  if (Date.now() < tokens.expiresAt - 300_000) {
-    return tokens.accessToken;
+  // Check cached token
+  const cached = await kv.get("ninja:shared");
+  if (cached) {
+    const tokens: NinjaTokens = JSON.parse(cached);
+    if (Date.now() < tokens.expiresAt - 300_000) {
+      return tokens.accessToken;
+    }
   }
 
-  // Try refresh
-  if (!tokens.refreshToken) return null;
-  const refreshed = await refreshNinjaToken(tokens.refreshToken, clientId, clientSecret);
-  if (!refreshed) return null;
+  // Fetch new token via client_credentials
+  const tokens = await fetchClientCredentialsToken(clientId, clientSecret);
+  if (!tokens) return null;
 
-  await kv.put(`ninja:${userId}`, JSON.stringify(refreshed), { expirationTtl: 86400 * 30 });
-  return refreshed.accessToken;
+  await kv.put("ninja:shared", JSON.stringify(tokens), { expirationTtl: 3600 });
+  return tokens.accessToken;
 }
 
-export async function storeNinjaToken(
-  kv: KVNamespace,
-  userId: string,
-  tokens: NinjaTokens
-): Promise<void> {
-  await kv.put(`ninja:${userId}`, JSON.stringify(tokens), { expirationTtl: 86400 * 30 });
+// Legacy exports kept for index.ts compatibility (no-ops now)
+export function getNinjaLoginUrl(_clientId: string, _redirectUri: string, _state: string): string {
+  return "";
 }
+export async function exchangeNinjaCode(): Promise<null> { return null; }
+export async function storeNinjaToken(): Promise<void> {}
 
 // ── API fetching ────────────────────────────────────
 

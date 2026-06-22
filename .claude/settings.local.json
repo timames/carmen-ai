@@ -5,7 +5,9 @@
       "Bash(npm install:*)",
       "Bash(gh repo:*)",
       "Bash(gh auth:*)",
-      "Bash(npx wrangler:*)"
+      "Bash(npx wrangler:*)",
+      "Bash(curl:*)",
+      "Bash(do echo:*)"
     ]
   }
 }

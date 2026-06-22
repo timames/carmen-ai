@@ -27,6 +27,9 @@ type App = { Bindings: Env; Variables: { user: User } };
 
 const app = new Hono<App>();
 
+// ── Favicon fallback ─────────────────────────────────────────
+app.get("/favicon.ico", (c) => c.redirect("/favicon.svg", 301));
+
 // ── Auth routes ──────────────────────────────────────────────
 app.get("/auth/login", handleLogin as any);
 app.get("/auth/callback", handleCallback as any);
@@ -43,9 +46,7 @@ app.get("/auth/status", async (c) => {
   const session = await getSession(c as any);
   if (!session) return c.json({ authenticated: false });
   const dbUser = await c.env.DB.prepare("SELECT role FROM users WHERE id = ?").bind(session.userId).first<{ role: string }>();
-  const ninjaConnected = isNinjaAllowed(session.email)
-    ? !!(await c.env.SESSIONS.get(`ninja:${session.userId}`))
-    : false;
+  const ninjaAllowed = isNinjaAllowed(session.email);
   return c.json({
     authenticated: true,
     user: {
@@ -54,8 +55,8 @@ app.get("/auth/status", async (c) => {
       name: session.name,
       role: dbUser?.role || "user",
     },
-    ninja: ninjaConnected,
-    ninjaAllowed: isNinjaAllowed(session.email),
+    ninja: ninjaAllowed,
+    ninjaAllowed,
   });
 });
 
@@ -381,7 +382,7 @@ api.post("/chat", async (c) => {
   }
 
   const ninjaTokenPromise = isNinjaAllowed(user.email) && c.env.NINJA_CLIENT_ID && c.env.NINJA_CLIENT_SECRET
-    ? getNinjaToken(c.env.SESSIONS, user.id, c.env.NINJA_CLIENT_ID, c.env.NINJA_CLIENT_SECRET)
+    ? getNinjaToken(c.env.SESSIONS, "shared", c.env.NINJA_CLIENT_ID, c.env.NINJA_CLIENT_SECRET)
     : Promise.resolve(null);
 
   const [graphContext, webContext, ninjaContext] = await Promise.all([
