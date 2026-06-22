@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Cardinal bird head silhouette -->
+  <defs>
+    <linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e63950"/>
+      <stop offset="100%" stop-color="#c41e3a"/>
+    </linearGradient>
+  </defs>
+  <!-- Crest -->
+  <path d="M32 4 C30 4, 28 8, 27 12 C26 16, 28 18, 30 18 C30 18, 29 10, 32 6 C35 10, 34 18, 34 18 C36 18, 38 16, 37 12 C36 8, 34 4, 32 4 Z" fill="url(#cg)"/>
+  <!-- Head -->
+  <ellipse cx="32" cy="28" rx="14" ry="12" fill="url(#cg)"/>
+  <!-- Body -->
+  <ellipse cx="32" cy="44" rx="16" ry="14" fill="url(#cg)"/>
+  <!-- Beak -->
+  <path d="M18 28 L10 30 L18 32 Z" fill="#f5a623"/>
+  <!-- Eye -->
+  <circle cx="26" cy="25" r="2.5" fill="#1a2744"/>
+  <circle cx="26.5" cy="24.5" r="1" fill="white"/>
+  <!-- Wing detail -->
+  <path d="M38 34 C42 30, 50 32, 52 38 C50 36, 44 35, 38 38 Z" fill="#8b1528" opacity="0.6"/>
+  <!-- Tail -->
+  <path d="M40 52 C44 54, 50 58, 54 60 C48 58, 44 54, 42 48 Z" fill="url(#cg)"/>
+  <path d="M38 54 C40 56, 46 60, 50 62 C44 60, 40 56, 40 50 Z" fill="#8b1528" opacity="0.7"/>
+</svg>

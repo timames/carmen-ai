@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Carmen AI — Cardinal</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#1a2744" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Carmen AI" />
+  <link rel="apple-touch-icon" href="/logo.png" />
+  <link rel="stylesheet" href="/style.css?v=20260620a" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Login Screen -->
+    <div id="login-screen">
+      <img src="/logo.png" class="logo" alt="Carmen AI" />
+      <h1>CARMEN</h1>
+      <p>Cardinal AI Resource Manager &amp; ENgine</p>
+      <a href="/auth/login" class="login-btn">
+        <svg width="20" height="20" viewBox="0 0 21 21" fill="none"><path d="M0 0h10v10H0z" fill="#f25022"/><path d="M11 0h10v10H11z" fill="#7fba00"/><path d="M0 11h10v10H0z" fill="#00a4ef"/><path d="M11 11h10v10H11z" fill="#ffb900"/></svg>
+        Sign in with Microsoft
+      </a>
+    </div>
+
+    <!-- Main App (hidden until authenticated) -->
+    <div id="sidebar-overlay"></div>
+    <aside id="sidebar" style="display:none">
+      <div class="sidebar-header">
+        <img src="/logo.png" class="logo" alt="" />
+        <h1>Carmen AI</h1>
+        <button id="new-chat-btn">+ New</button>
+      </div>
+      <div id="workspace-tabs"></div>
+      <div id="conversation-list"></div>
+      <div class="sidebar-footer">
+        <span id="user-name"></span>
+        <button id="logout-btn">Sign Out</button>
+      </div>
+    </aside>
+    <main id="chat-area" style="display:none">
+      <div id="chat-header">
+        <button id="menu-btn" title="Menu" aria-label="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <label for="model-select">Model</label>
+        <select id="model-select">
+          <option value="auto">Auto (Smart Router)</option>
+          <option value="general">Llama 3.3 70B</option>
+          <option value="coder">Qwen 2.5 Coder 32B</option>
+          <option value="reasoning">DeepSeek R1 32B</option>
+        </select>
+        <span id="model-badge"></span>
+      </div>
+      <div id="messages" style="display:none"></div>
+      <div id="welcome-screen">
+        <img src="/logo.png" class="logo" alt="" />
+        <h2>Welcome to Carmen</h2>
+        <p>Cardinal AI Resource Manager &amp; ENgine</p>
+      </div>
+      <div id="file-list" style="display:none"></div>
+      <form id="chat-form">
+        <button type="button" id="attach-btn" title="Attach file" aria-label="Attach file">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <input type="file" id="file-input" multiple hidden />
+        <textarea id="message-input" placeholder="Ask Carmen anything..." rows="1"></textarea>
+        <button type="submit" id="send-btn">Send</button>
+      </form>
+    </main>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.7/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script src="/app.js?v=20260620a"></script>
+</body>
+</html>

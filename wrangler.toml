@@ -1,0 +1,33 @@
+name = "carmen-ai"
+main = "src/index.ts"
+compatibility_date = "2025-06-01"
+
+[assets]
+directory = "public"
+
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "carmen-ai"
+database_id = "PLACEHOLDER"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "PLACEHOLDER"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "carmen-ai-files"
+
+[vars]
+APP_URL = "https://carmen-ai.tames.workers.dev"
+
+# Set these as secrets:
+#   wrangler secret put ENTRA_TENANT_ID
+#   wrangler secret put ENTRA_CLIENT_ID
+#   wrangler secret put ENTRA_CLIENT_SECRET
+#   wrangler secret put BRAVE_API_KEY
+#   wrangler secret put NINJA_CLIENT_ID
+#   wrangler secret put NINJA_CLIENT_SECRET

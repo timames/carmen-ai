@@ -1,0 +1,24 @@
+{
+  "name": "carmen-ai",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create carmen-ai",
+    "db:migrate": "wrangler d1 execute carmen-ai --file=schema.sql",
+    "db:migrate:prod": "wrangler d1 execute carmen-ai --file=schema.sql --remote",
+    "db:migrate-v2": "wrangler d1 execute carmen-ai --file=schema-v2.sql",
+    "db:migrate-v2:prod": "wrangler d1 execute carmen-ai --file=schema-v2.sql --remote"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "hono": "^4.7.0",
+    "unpdf": "^1.6.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250620.0",
+    "typescript": "^5.8.0",
+    "wrangler": "^4.0.0"
+  }
+}
