@@ -7,6 +7,7 @@ export type Env = {
   ENTRA_CLIENT_ID: string;
   ENTRA_CLIENT_SECRET: string;
   APP_URL: string;
+  ANTHROPIC_API_KEY?: string;
   BRAVE_SEARCH_API_KEY?: string;
   NINJA_CLIENT_ID?: string;
   NINJA_CLIENT_SECRET?: string;

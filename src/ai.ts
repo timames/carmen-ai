@@ -4,7 +4,9 @@ const MODELS = {
   reasoning: "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
 } as const;
 
-type TaskType = "coding" | "reasoning" | "general";
+export const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+
+type TaskType = "coding" | "reasoning" | "general" | "complex";
 
 function detectTaskType(
   messages: Array<{ role: string; content: string }>
@@ -39,24 +41,52 @@ function detectTaskType(
   return "general";
 }
 
+/** Estimate total token count from messages (rough: 1 token ~ 4 chars) */
+function estimateTokens(
+  messages: Array<{ role: string; content: string }>
+): number {
+  return messages.reduce(
+    (sum, m) => sum + Math.ceil((m.content?.length || 0) / 4),
+    0
+  );
+}
+
 export function resolveModel(
   modelChoice: string,
   messages: Array<{ role: string; content: string }>
-): { model: string; taskType: string } {
+): { model: string; taskType: string; useAnthropic: boolean } {
+  // Explicit Anthropic selection
+  if (modelChoice === "claude") {
+    return { model: ANTHROPIC_MODEL, taskType: "complex", useAnthropic: true };
+  }
+
   if (modelChoice === "auto") {
     const taskType = detectTaskType(messages);
-    const model = taskType === "coding" ? MODELS.coder : taskType === "reasoning" ? MODELS.reasoning : MODELS.general;
-    return { model, taskType };
+    const tokens = estimateTokens(messages);
+
+    // Route to Anthropic for large context (>24K tokens)
+    if (tokens > 24_000) {
+      return { model: ANTHROPIC_MODEL, taskType: "complex", useAnthropic: true };
+    }
+
+    const model =
+      taskType === "coding"
+        ? MODELS.coder
+        : taskType === "reasoning"
+          ? MODELS.reasoning
+          : MODELS.general;
+    return { model, taskType, useAnthropic: false };
   }
 
   if (modelChoice in MODELS) {
     return {
       model: MODELS[modelChoice as keyof typeof MODELS],
       taskType: modelChoice,
+      useAnthropic: false,
     };
   }
 
-  return { model: modelChoice, taskType: "manual" };
+  return { model: modelChoice, taskType: "manual", useAnthropic: false };
 }
 
 export function getAvailableModels() {
@@ -83,6 +113,12 @@ export function getAvailableModels() {
       name: "DeepSeek R1 32B",
       description: "Complex reasoning, math, and analysis",
       model: MODELS.reasoning,
+    },
+    {
+      id: "claude",
+      name: "Claude Sonnet 4",
+      description: "Large/complex tasks, document creation, long context",
+      model: ANTHROPIC_MODEL,
     },
   ];
 }

@@ -3,7 +3,9 @@
     "allow": [
       "Bash(cp:*)",
       "Bash(npm install:*)",
-      "Bash(gh repo:*)"
+      "Bash(gh repo:*)",
+      "Bash(gh auth:*)",
+      "Bash(npx wrangler:*)"
     ]
   }
 }

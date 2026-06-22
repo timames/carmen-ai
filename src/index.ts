@@ -417,7 +417,8 @@ api.post("/chat", async (c) => {
     .run();
 
   const effective = modelChoice || conv.model || "auto";
-  const { model, taskType } = resolveModel(effective, messages as any);
+  const resolved = resolveModel(effective, messages as any);
+  const { model, taskType } = resolved;
 
   if (history.length === 0) {
     const title =
@@ -429,15 +430,48 @@ api.post("/chat", async (c) => {
       .run();
   }
 
+  const useAnthropic = resolved.useAnthropic && c.env.ANTHROPIC_API_KEY;
+
   let aiStream: ReadableStream;
   try {
-    aiStream = (await c.env.AI.run(model as any, {
-      messages: messages as any,
-      max_tokens: 4096,
-      stream: true,
-    })) as ReadableStream;
+    if (useAnthropic) {
+      // Call Anthropic Messages API with streaming
+      const anthropicMessages = messages.slice(1).map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: String(m.content),
+      }));
+      const systemText = String(messages[0]?.content || "");
+
+      const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": c.env.ANTHROPIC_API_KEY!,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 16384,
+          system: systemText,
+          messages: anthropicMessages,
+          stream: true,
+        }),
+      });
+
+      if (!anthropicRes.ok || !anthropicRes.body) {
+        const errText = await anthropicRes.text().catch(() => "unknown");
+        throw new Error(`Anthropic API ${anthropicRes.status}: ${errText}`);
+      }
+      aiStream = anthropicRes.body;
+    } else {
+      aiStream = (await c.env.AI.run(model as any, {
+        messages: messages as any,
+        max_tokens: 4096,
+        stream: true,
+      })) as ReadableStream;
+    }
   } catch (err) {
-    console.error("AI.run failed:", err);
+    console.error("AI error:", err);
     return c.json({ error: `AI model error: ${err}` }, 502);
   }
 
@@ -460,6 +494,7 @@ api.post("/chat", async (c) => {
       );
 
       const reader = aiStream.getReader();
+      let partial = "";
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -467,18 +502,36 @@ api.post("/chat", async (c) => {
 
           const chunk =
             typeof value === "string" ? value : decoder.decode(value);
+          partial += chunk;
 
-          for (const line of chunk.split("\n")) {
+          const lines = partial.split("\n");
+          partial = lines.pop() || "";
+
+          for (const line of lines) {
             if (!line.startsWith("data: ")) continue;
             const data = line.slice(6).trim();
             if (data === "[DONE]") continue;
             try {
               const parsed = JSON.parse(data);
-              if (parsed.response) {
-                fullResponse += parsed.response;
+              let text = "";
+
+              if (useAnthropic) {
+                // Anthropic SSE: content_block_delta with delta.text
+                if (parsed.type === "content_block_delta" && parsed.delta?.text) {
+                  text = parsed.delta.text;
+                }
+              } else {
+                // Workers AI SSE: { response: "..." }
+                if (parsed.response) {
+                  text = parsed.response;
+                }
+              }
+
+              if (text) {
+                fullResponse += text;
                 controller.enqueue(
                   encoder.encode(
-                    `data: ${JSON.stringify({ type: "token", content: parsed.response })}\n\n`
+                    `data: ${JSON.stringify({ type: "token", content: text })}\n\n`
                   )
                 );
               }
