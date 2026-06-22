@@ -11,18 +11,18 @@ binding = "AI"
 [[d1_databases]]
 binding = "DB"
 database_name = "carmen-ai"
-database_id = "PLACEHOLDER"
+database_id = "31699a5a-b866-4e94-8bbc-631a803b60bf"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "PLACEHOLDER"
+id = "3deb6be76897424b8d35af1803512add"
 
 [[r2_buckets]]
 binding = "FILES"
 bucket_name = "carmen-ai-files"
 
 [vars]
-APP_URL = "https://carmen-ai.tames.workers.dev"
+APP_URL = "https://carmen-ai.tim-ames.workers.dev"
 
 # Set these as secrets:
 #   wrangler secret put ENTRA_TENANT_ID
