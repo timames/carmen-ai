@@ -21,6 +21,10 @@ import {
   storeNinjaToken,
   getNinjaToken,
   fetchNinjaContext,
+  listNinjaScripts,
+  runNinjaScript,
+  getDeviceScriptingOptions,
+  getDeviceActivities,
 } from "./ninja";
 
 type App = { Bindings: Env; Variables: { user: User } };
@@ -590,6 +594,78 @@ api.post("/chat", async (c) => {
       Connection: "keep-alive",
     },
   });
+});
+
+// ── NinjaOne Script Execution ─────────────────────────
+
+const ninjaGuard: MiddlewareHandler<App> = async (c, next) => {
+  const user = c.get("user");
+  if (!isNinjaAllowed(user.email)) return c.json({ error: "NinjaOne access not allowed" }, 403);
+  if (!c.env.NINJA_CLIENT_ID || !c.env.NINJA_CLIENT_SECRET) return c.json({ error: "NinjaOne not configured" }, 500);
+  await next();
+};
+
+api.get("/ninja/scripts", ninjaGuard, async (c) => {
+  const token = await getNinjaToken(c.env.SESSIONS, "shared", c.env.NINJA_CLIENT_ID!, c.env.NINJA_CLIENT_SECRET!);
+  if (!token) return c.json({ error: "Failed to get NinjaOne token" }, 502);
+  const data = await listNinjaScripts(token);
+  return c.json(data);
+});
+
+api.get("/ninja/devices/:id/scripting-options", ninjaGuard, async (c) => {
+  const deviceId = parseInt(c.req.param("id"));
+  if (isNaN(deviceId)) return c.json({ error: "Invalid device ID" }, 400);
+  const token = await getNinjaToken(c.env.SESSIONS, "shared", c.env.NINJA_CLIENT_ID!, c.env.NINJA_CLIENT_SECRET!);
+  if (!token) return c.json({ error: "Failed to get NinjaOne token" }, 502);
+  const data = await getDeviceScriptingOptions(token, deviceId);
+  return c.json(data);
+});
+
+api.post("/ninja/devices/:id/run-script", ninjaGuard, async (c) => {
+  const user = c.get("user");
+  const deviceId = parseInt(c.req.param("id"));
+  if (isNaN(deviceId)) return c.json({ error: "Invalid device ID" }, 400);
+
+  const body = await c.req.json<{
+    scriptId?: number;
+    type?: string;
+    code?: string;
+    parameters?: Record<string, string>;
+    runAs?: string;
+  }>();
+
+  if (!body.scriptId && !body.code) {
+    return c.json({ error: "scriptId or code is required" }, 400);
+  }
+
+  const token = await getNinjaToken(c.env.SESSIONS, "shared", c.env.NINJA_CLIENT_ID!, c.env.NINJA_CLIENT_SECRET!);
+  if (!token) return c.json({ error: "Failed to get NinjaOne token" }, 502);
+
+  console.log(`[NinjaOne] User ${user.email} running script on device ${deviceId}`, {
+    scriptId: body.scriptId,
+    type: body.type,
+    hasCode: !!body.code,
+    runAs: body.runAs || "SYSTEM",
+  });
+
+  const result = await runNinjaScript(token, deviceId, {
+    scriptId: body.scriptId,
+    type: body.type || "POWERSHELL",
+    code: body.code,
+    parameters: body.parameters,
+    runAs: body.runAs || "SYSTEM",
+  });
+
+  return c.json(result);
+});
+
+api.get("/ninja/devices/:id/activities", ninjaGuard, async (c) => {
+  const deviceId = parseInt(c.req.param("id"));
+  if (isNaN(deviceId)) return c.json({ error: "Invalid device ID" }, 400);
+  const token = await getNinjaToken(c.env.SESSIONS, "shared", c.env.NINJA_CLIENT_ID!, c.env.NINJA_CLIENT_SECRET!);
+  if (!token) return c.json({ error: "Failed to get NinjaOne token" }, 502);
+  const data = await getDeviceActivities(token, deviceId);
+  return c.json(data);
 });
 
 // ── Document generation ──────────────────────────────

@@ -34,7 +34,28 @@ Example — if user says "create a checklist in docx":
 # Project Checklist
 - [ ] Item one
 - [ ] Item two
-\`\`\``;
+\`\`\`
+
+NINJAONE SCRIPT EXECUTION:
+You can run PowerShell scripts on managed devices via NinjaOne RMM. When the user asks you to run a command, script, restart a service, check something on a device, etc., use the script execution block syntax:
+
+\`\`\`ninja-script:DEVICE_ID
+{"type":"POWERSHELL","code":"Your PowerShell code here","runAs":"SYSTEM"}
+\`\`\`
+
+Or to run a saved script from the automation library:
+\`\`\`ninja-script:DEVICE_ID
+{"scriptId":123,"runAs":"SYSTEM"}
+\`\`\`
+
+Rules for script execution:
+- DEVICE_ID must be a real numeric NinjaOne device ID from the context data
+- type can be: POWERSHELL, CMD, BASH (use POWERSHELL for Windows devices)
+- runAs: SYSTEM (default, admin tasks) or LOGGED_IN_USER (user-context tasks)
+- Always confirm with the user before running destructive scripts (restart, shutdown, delete, uninstall)
+- When NinjaOne device/script data is in the context, reference real device IDs and script IDs
+- For simple checks (disk space, services, installed software), write inline PowerShell
+- For complex or recurring tasks, suggest using a saved script from the library if available`;
 }
 
 async function graphFetch(

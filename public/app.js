@@ -602,6 +602,36 @@ function renderMarkdown(text) {
     '<details class="thinking-block"><summary>Thinking...</summary>\n\n$1\n\n</details>'
   );
 
+  // NinjaOne script execution blocks
+  text = text.replace(
+    /```ninja-script:(\d+)\n([\s\S]*?)```/g,
+    (_, deviceId, jsonStr) => {
+      const id = "ninja-" + Math.random().toString(36).slice(2, 10);
+      if (!window._ninjaScripts) window._ninjaScripts = {};
+      try {
+        const parsed = JSON.parse(jsonStr.trim());
+        window._ninjaScripts[id] = { deviceId: parseInt(deviceId), ...parsed };
+        const label = parsed.scriptId
+          ? `Run Script #${parsed.scriptId}`
+          : `Run ${parsed.type || "PowerShell"} Script`;
+        const codePreview = parsed.code
+          ? `<pre style="margin:8px 0;padding:8px;background:var(--bg-primary,#1a2744);border-radius:6px;font-size:0.8rem;overflow-x:auto;max-height:150px"><code>${escapeHtml(parsed.code)}</code></pre>`
+          : "";
+        return `<div class="doc-download-block" data-ninja-id="${id}" style="border-color:rgba(56,189,248,0.3)">
+          <div class="doc-download-icon">\u{1F4BB}</div>
+          <div class="doc-download-info">
+            <span class="doc-download-name">${escapeHtml(label)} on Device #${deviceId}</span>
+            <span class="doc-download-hint">Run as: ${parsed.runAs || "SYSTEM"}</span>
+            ${codePreview}
+          </div>
+          <button class="doc-download-btn ninja-run-btn" data-ninja-id="${id}" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8)">Run</button>
+        </div>`;
+      } catch {
+        return `<pre><code>Invalid script block: ${escapeHtml(jsonStr)}</code></pre>`;
+      }
+    }
+  );
+
   text = text.replace(
     /```document:([^\n]+)\n([\s\S]*?)```/g,
     (_, filename, content) => {
@@ -653,7 +683,62 @@ function addCopyButtons(root) {
     pre.appendChild(btn);
   });
 
-  (root || document).querySelectorAll(".doc-download-btn").forEach((btn) => {
+  // NinjaOne script run buttons
+  (root || document).querySelectorAll(".ninja-run-btn").forEach((btn) => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const id = btn.dataset.ninjaId;
+      const script = window._ninjaScripts?.[id];
+      if (!script) return;
+
+      const desc = script.code
+        ? `Run PowerShell on device #${script.deviceId}?`
+        : `Run script #${script.scriptId} on device #${script.deviceId}?`;
+      if (!confirm(desc)) return;
+
+      btn.textContent = "Running...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`/api/ninja/devices/${script.deviceId}/run-script`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scriptId: script.scriptId,
+            type: script.type || "POWERSHELL",
+            code: script.code,
+            parameters: script.parameters,
+            runAs: script.runAs || "SYSTEM",
+          }),
+        });
+
+        const result = await res.json();
+        if (!res.ok || result.error) {
+          throw new Error(result.error || "Script execution failed");
+        }
+
+        btn.textContent = "Sent!";
+        btn.style.background = "linear-gradient(135deg,#22c55e,#4ade80)";
+        setTimeout(() => {
+          btn.textContent = "Run";
+          btn.disabled = false;
+          btn.style.background = "";
+        }, 3000);
+      } catch (err) {
+        btn.textContent = err.message || "Error";
+        btn.style.background = "linear-gradient(135deg,#ef4444,#f87171)";
+        setTimeout(() => {
+          btn.textContent = "Run";
+          btn.disabled = false;
+          btn.style.background = "";
+        }, 3000);
+      }
+    });
+  });
+
+  (root || document).querySelectorAll(".doc-download-btn:not(.ninja-run-btn)").forEach((btn) => {
     if (btn._bound) return;
     btn._bound = true;
     btn.addEventListener("click", async (e) => {

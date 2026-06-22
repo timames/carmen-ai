@@ -222,6 +222,71 @@ function extractDeviceName(message: string): string | null {
   return null;
 }
 
+// ── Script execution ─────────────────────────────────
+
+export async function listNinjaScripts(token: string): Promise<unknown> {
+  return ninjaFetch(token, "/automation/scripts");
+}
+
+export async function getDeviceScriptingOptions(token: string, deviceId: number): Promise<unknown> {
+  return ninjaFetch(token, `/device/${deviceId}/scripting/options`);
+}
+
+export async function runNinjaScript(
+  token: string,
+  deviceId: number,
+  opts: { scriptId?: number; type?: string; code?: string; parameters?: Record<string, string>; runAs?: string }
+): Promise<unknown> {
+  const body: Record<string, unknown> = {};
+
+  if (opts.code && opts.type) {
+    // Ad-hoc script
+    body.type = opts.type; // POWERSHELL, CMD, BASH, etc.
+    body.content = opts.code;
+  } else if (opts.scriptId) {
+    // Saved script from automation library
+    body.id = opts.scriptId;
+    body.type = opts.type || "ACTION";
+  }
+
+  if (opts.parameters && Object.keys(opts.parameters).length > 0) {
+    body.parameters = opts.parameters;
+  }
+  if (opts.runAs) {
+    body.runAs = opts.runAs;
+  }
+
+  const res = await fetch(`${NINJA_BASE}/v2/device/${deviceId}/script/run`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "unknown");
+    return { error: `NinjaOne script run failed (${res.status}): ${errText}` };
+  }
+
+  return res.json();
+}
+
+export async function getDeviceActivities(token: string, deviceId: number): Promise<unknown> {
+  return ninjaFetch(token, `/device/${deviceId}/activities?pageSize=10&type=ACTION`);
+}
+
+function formatScripts(data: unknown): string {
+  const scripts = toArray(data);
+  if (!scripts.length) return "No scripts found in the automation library.";
+
+  return scripts.slice(0, 30).map((s, i) => {
+    const lang = s.language || s.scriptingLanguage || "Unknown";
+    return `${i + 1}. **${s.name || "Unnamed"}** (ID: ${s.id}) — ${lang}${s.description ? ` — ${s.description}` : ""}`;
+  }).join("\n");
+}
+
 // ── Context builder ─────────────────────────────────
 
 export async function fetchNinjaContext(
@@ -231,7 +296,7 @@ export async function fetchNinjaContext(
   if (!ninjaToken) return "";
 
   const lower = message.toLowerCase();
-  const needsNinja = /\b(ninja|ninjaone|rmm|device|endpoint|computer|server|workstation|laptop|machine|agent|alert|patch|install|antivirus|disk|cpu|memory|ram|uptime|offline|online|managed|org|organization|client|group|fetch|retrieve|inventory|how\s+many|count)\b/.test(lower);
+  const needsNinja = /\b(ninja|ninjaone|rmm|device|endpoint|computer|server|workstation|laptop|machine|agent|alert|patch|install|antivirus|disk|cpu|memory|ram|uptime|offline|online|managed|org|organization|client|group|fetch|retrieve|inventory|how\s+many|count|script|powershell|run|execute|command|restart|reboot|shutdown|remediat)\b/.test(lower);
 
   const deviceName = extractDeviceName(message);
   if (!needsNinja && !deviceName) return "";
@@ -297,6 +362,15 @@ export async function fetchNinjaContext(
           text: formatDevices(allDevices),
         };
       })()
+    );
+  }
+
+  if (/\b(script|powershell|run|execute|command|restart|reboot|shutdown|remediat)\b/.test(lower)) {
+    fetches.push(
+      ninjaFetch(ninjaToken, "/automation/scripts?pageSize=50").then((data) => ({
+        label: "NinjaOne Automation Scripts",
+        text: formatScripts(data),
+      }))
     );
   }
 
